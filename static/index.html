@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Nova AI</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="logo">DAM AI</div>
+    <button onclick="createChat()">＋ New Chat</button>
+    <div id="history"></div>
+    <div class="status"><span class="pulse"></span> AI Ready</div>
+  </aside>
+
+  <main class="chat-area">
+
+    <header class="topbar">
+      <div>AI Assistant</div>
+      <div class="badge">LIVE</div>
+    </header>
+
+    <section id="chat"></section>
+
+    <div class="suggestions">
+      <button onclick="quickAsk('Explain artificial intelligence simply')">Explain AI</button>
+      <button onclick="quickAsk('Write a professional email')">Write Email</button>
+      <button onclick="quickAsk('Give startup ideas')">Startup Ideas</button>
+      <button onclick="quickAsk('How to stay productive?')">Productivity</button>
+    </div>
+
+    <div class="input-zone">
+      <textarea id="input" placeholder="Ask anything… coding, career, ideas, tech"></textarea>
+      <button onclick="sendMessage()">➤</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+let chats = {};
+let currentChat = null;
+
+const chatBox = document.getElementById("chat");
+const historyBox = document.getElementById("history");
+const input = document.getElementById("input");
+
+function createChat(){
+  const id = Date.now();
+  chats[id] = [];
+  currentChat = id;
+  renderHistory();
+  renderChat();
+}
+
+function renderHistory(){
+  historyBox.innerHTML="";
+  Object.keys(chats).reverse().forEach(id=>{
+    const item=document.createElement("div");
+    item.className="history-item";
+    item.innerText="Chat "+id.toString().slice(-4);
+    item.onclick=()=>{currentChat=id; renderChat();}
+    historyBox.appendChild(item);
+  })
+}
+
+function renderChat(){
+  chatBox.innerHTML="";
+  chats[currentChat].forEach(m=>addMessage(m.text,m.sender,false));
+}
+
+function quickAsk(text){
+  input.value=text;
+  sendMessage();
+}
+
+input.addEventListener("keypress",e=>{
+  if(e.key==="Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function formatText(text) {
+  return text
+    .replace(/\n/g, "<br>")        // preserve line breaks
+    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>") // bold markdown
+    .replace(/\* (.*?)<br>/g, "• $1<br>");  // bullet points
+}
+
+function addMessage(text, sender, save=true){
+  const msg=document.createElement("div");
+  msg.className="msg "+sender;
+
+  msg.innerHTML=`
+    <div class="bubble">
+      ${formatText(text)}
+      <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+    </div>`;
+
+  chatBox.appendChild(msg);
+  chatBox.scrollTop=chatBox.scrollHeight;
+
+  if(save) chats[currentChat].push({text,sender});
+
+}
+
+function typingBubble(){
+  const t=document.createElement("div");
+  t.className="msg bot typing";
+  t.innerHTML=`<div class="bubble"><span></span><span></span><span></span></div>`;
+  chatBox.appendChild(t);
+  chatBox.scrollTop=chatBox.scrollHeight;
+  return t;
+}
+
+async function sendMessage(){
+  if(!currentChat) createChat();
+
+  const text=input.value.trim();
+  if(!text) return;
+
+  addMessage(text,"user");
+  input.value="";
+
+  const typing=typingBubble();
+
+  const res=await fetch("/chat?question="+encodeURIComponent(text));
+  const data=await res.json();
+
+  typing.remove();
+  addMessage(data.answer,"bot");
+}
+</script>
+
+</body>
+</html>
