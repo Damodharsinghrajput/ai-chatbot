@@ -1,5 +1,4 @@
 fastapi
 uvicorn
-pymongo
+groq
 python-dotenv
-openai
